@@ -19,4 +19,8 @@ public class HolidayCountyStore {
     public void removeAll() {
         repository.deleteAll();
     }
+
+    public void removeAllInBatch() {
+        repository.deleteAllInBatch();
+    }
 }
