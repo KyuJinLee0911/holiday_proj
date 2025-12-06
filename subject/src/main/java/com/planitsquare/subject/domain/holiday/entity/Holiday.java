@@ -52,16 +52,16 @@ public class Holiday {
 
     @Comment("도입 년도")
     @Column
-    private Integer launch_year;
+    private Integer launchYear;
 
-    private Holiday(Country country, LocalDate date, String name, String localName, Boolean fixed, Boolean global, Integer launch_year) {
+    private Holiday(Country country, LocalDate date, String name, String localName, Boolean fixed, Boolean global, Integer launchYear) {
         this.country = country;
         this.date = date;
         this.name = name;
         this.localName = localName;
         this.fixed = fixed;
         this.global = global;
-        this.launch_year = launch_year;
+        this.launchYear = launchYear;
     }
 
     public static Holiday from(HolidayDTO dto, Country country) {

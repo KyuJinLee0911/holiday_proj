@@ -19,4 +19,8 @@ public class HolidayStore {
     public void removeAll() {
         holidayRepository.deleteAll();
     }
+
+    public void removeAllInBatch() {
+        holidayRepository.deleteAllInBatch();
+    }
 }

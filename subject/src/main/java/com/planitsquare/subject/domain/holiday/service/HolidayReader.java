@@ -1,7 +1,12 @@
 package com.planitsquare.subject.domain.holiday.service;
 
+import com.planitsquare.subject.domain.holiday.dto.HolidaySearchCondition;
+import com.planitsquare.subject.domain.holiday.dto.response.HolidayResponse;
+import com.planitsquare.subject.domain.holiday.exception.HolidayNotFoundException;
 import com.planitsquare.subject.domain.holiday.repository.HolidayRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -19,5 +24,13 @@ public class HolidayReader {
 
     public long countEveryData() {
         return holidayRepository.count();
+    }
+
+    public Page<HolidayResponse> search(HolidaySearchCondition condition, Pageable pageable) {
+        Page<HolidayResponse> searchResult = holidayRepository.search(condition, pageable);
+        if (searchResult.isEmpty()) {
+            throw new HolidayNotFoundException();
+        }
+        return searchResult;
     }
 }

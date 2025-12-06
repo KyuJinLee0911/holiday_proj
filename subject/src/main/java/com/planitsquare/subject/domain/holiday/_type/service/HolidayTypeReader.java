@@ -9,18 +9,10 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class HolidayTypeStore {
+public class HolidayTypeReader {
     private final HolidayTypeRepository repository;
 
-    public List<HolidayType> saveAll(List<HolidayType> holidayTypes) {
-        return repository.saveAll(holidayTypes);
-    }
-
-    public void removeAll() {
-        repository.deleteAll();
-    }
-
-    public void removeAllInBatch() {
-        repository.deleteAllInBatch();
+    public List<HolidayType> getAllTypes(List<Long> holidayIds) {
+        return repository.findAllByHoliday_IdIn(holidayIds);
     }
 }
