@@ -6,7 +6,6 @@ import com.planitsquare.subject.domain.country.service.CountryStore;
 import com.planitsquare.subject.domain.holiday._county.service.HolidayCountyStore;
 import com.planitsquare.subject.domain.holiday._type.service.HolidayTypeStore;
 import com.planitsquare.subject.domain.holiday.dto.HolidayDTO;
-import com.planitsquare.subject.domain.holiday.entity.Holiday;
 import com.planitsquare.subject.global.common.utils.ExternalApiClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +22,8 @@ import static org.mockito.Mockito.*;
 public class HolidayBootstrapServiceTest {
     @Mock
     ExternalApiClient externalApiClient;
+    @Mock
+    HolidayService holidayService;
     @Mock
     HolidayReader holidayReader;
     @Mock
@@ -63,6 +64,7 @@ public class HolidayBootstrapServiceTest {
     void 공휴일_목록이_정상적으로_들어오면_엔티티를_저장한다() {
         // given
         CountryDTO countryDTO = new CountryDTO("KR", "Korea");
+        Country country = Country.from(countryDTO);
         when(externalApiClient.getCountries()).thenReturn(List.of(countryDTO));
 
         when(holidayReader.countExistingDataBetween(2020, 2020, "KR"))
@@ -87,67 +89,9 @@ public class HolidayBootstrapServiceTest {
         holidayBootstrapService.bootstrap(2020, 2020);
 
         // then
-        //공휴일 저장
-        verify(holidayStore).saveAll(argThat(list -> {
-            if (list.size() != 1) return false;
-            Holiday h = list.get(0);
-            return h.getDate().toString().equals("2020-01-01") &&
-                    h.getCountry().getCountryCode().equals("KR") &&
-                    h.getName().equals("New Year's Day");
-        }));
-
-        verify(holidayTypeStore).saveAll(argThat(list -> list.size() == 1));
-        verify(holidayCountyStore).saveAll(argThat(list -> list.isEmpty()));
+        verify(holidayService).saveAllEntities(anyList(), any(Country.class));
     }
 
-    @Test
-    void 같은_공휴일이_중복되어_들어와도_Holiday는_한번만_저장된다() {
-        // given
-        CountryDTO countryDTO = new CountryDTO("KR", "Korea");
-        when(externalApiClient.getCountries()).thenReturn(List.of(countryDTO));
-
-        when(holidayReader.countExistingDataBetween(2020, 2020, "KR"))
-                .thenReturn(0L); // 기존 저장된 데이터 없음
-
-        HolidayDTO dto1 = new HolidayDTO(
-                LocalDate.of(2020, 01, 01),
-                "새해",
-                "New Year's Day",
-                "KR",
-                false,
-                true,
-                List.of("KR-11"),
-                null,
-                List.of("Public")
-        );
-
-        HolidayDTO dto2 = new HolidayDTO(
-                LocalDate.of(2020, 01, 01),
-                "새해",
-                "New Year's Day",
-                "KR",
-                false,
-                true,
-                List.of("KR-12"),
-                null,
-                List.of("Public")
-        );
-
-        when(externalApiClient.getHolidays(2020, "KR"))
-                .thenReturn(List.of(dto1, dto2));
-
-        // when
-        holidayBootstrapService.bootstrap(2020, 2020);
-
-        // then
-        // holiday는 한 개만
-        verify(holidayStore).saveAll(argThat(list -> list.size() == 1));
-        // county는 두 개
-        verify(holidayCountyStore).saveAll(argThat(list -> list.size() == 2));
-
-        // type은 한 개
-        verify(holidayTypeStore).saveAll(argThat(list -> list.size() == 1));
-    }
 
     @Test
     void 공휴일_API가_빈_리스트만_주면_저장하지_않고_로그만_찍는다() {
@@ -199,6 +143,6 @@ public class HolidayBootstrapServiceTest {
 
         // then
         verify(externalApiClient, atLeast(2)).getHolidays(2020, "KR");
-        verify(holidayStore).saveAll(anyList());
+        verify(holidayService).saveAllEntities(anyList(), any(Country.class));
     }
 }

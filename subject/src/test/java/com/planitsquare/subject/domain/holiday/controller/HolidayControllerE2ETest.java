@@ -5,12 +5,17 @@ import com.planitsquare.subject.domain.country.dto.CountryDTO;
 import com.planitsquare.subject.domain.country.entity.Country;
 import com.planitsquare.subject.domain.country.service.CountryStore;
 import com.planitsquare.subject.domain.holiday._county.entity.HolidayCounty;
+import com.planitsquare.subject.domain.holiday._county.service.HolidayCountyReader;
 import com.planitsquare.subject.domain.holiday._county.service.HolidayCountyStore;
 import com.planitsquare.subject.domain.holiday._type.entity.HolidayType;
+import com.planitsquare.subject.domain.holiday._type.service.HolidayTypeReader;
 import com.planitsquare.subject.domain.holiday._type.service.HolidayTypeStore;
 import com.planitsquare.subject.domain.holiday.dto.HolidayDTO;
+import com.planitsquare.subject.domain.holiday.dto.request.RefreshHolidayRequest;
 import com.planitsquare.subject.domain.holiday.entity.Holiday;
+import com.planitsquare.subject.domain.holiday.service.HolidayReader;
 import com.planitsquare.subject.domain.holiday.service.HolidayStore;
+import com.planitsquare.subject.global.common.utils.ExternalApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,13 +25,18 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -45,12 +55,23 @@ public class HolidayControllerE2ETest {
 
     @Autowired
     HolidayStore holidayStore;
+    @Autowired
+    HolidayReader holidayReader;
 
     @Autowired
     HolidayTypeStore holidayTypeStore;
+    @Autowired
+    HolidayTypeReader holidayTypeReader;
 
     @Autowired
     HolidayCountyStore holidayCountyStore;
+    @Autowired
+    HolidayCountyReader holidayCountyReader;
+
+    @MockitoBean
+    ExternalApiClient externalApiClient;
+
+    private Country country;
 
     @BeforeEach
     void setUp() {
@@ -62,6 +83,7 @@ public class HolidayControllerE2ETest {
         CountryDTO usDTO = new CountryDTO("US", "United States");
         Country kr = Country.from(krDTO);
         Country us = Country.from(usDTO);
+        country = kr;
         countryStore.saveAll(List.of(kr, us));
 
         HolidayDTO krNewYearDTO = new HolidayDTO(
@@ -133,6 +155,56 @@ public class HolidayControllerE2ETest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.content", hasSize(2)))
                     .andExpect(jsonPath("$.data.content[*].types", everyItem(hasItem("Public"))));
+        }
+    }
+
+    @Nested
+    @DisplayName("공휴일 재동기화 API Post(/api/holidays)")
+    class RefreshApi {
+        @Test
+        void POST_api_holidays_기존_데이터_삭제후_외부데이터로_재동기화() throws Exception {
+            RefreshHolidayRequest request = new RefreshHolidayRequest(2025, "KR");
+            List<HolidayDTO> externalDtos = List.of(
+                    new HolidayDTO(LocalDate.of(2025, 1, 1),
+                            "새 새해",
+                            "New New Year's Day",
+                            "KR",
+                            true,
+                            true,
+                            List.of("KR-11"),
+                            null,
+                            List.of("Public", "Bank")
+                    ),
+                    new HolidayDTO(LocalDate.of(2025, 1, 1),
+                            "새 새해",
+                            "New New Year's Day",
+                            "KR",
+                            true,
+                            true,
+                            List.of("KR-11"),
+                            null,
+                            List.of("Public")
+                    )
+            );
+            when(externalApiClient.getHolidays(2025, "KR")).thenReturn(externalDtos);
+            MvcResult result = mockMvc.perform(post("/api/holidays")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            List<Holiday> holidays = holidayReader.getByCountryAndYear(country, 2025);
+            assertThat(holidays).hasSize(1);
+            Holiday newHoliday = holidays.get(0);
+            assertThat(newHoliday.getName()).isEqualTo("New New Year's Day");
+
+            List<HolidayType> types = holidayTypeReader.getAllTypes(List.of(newHoliday.getId()));
+            assertThat(types).extracting(HolidayType::getTypeCode)
+                    .containsExactlyInAnyOrder("Public", "Bank");
+
+            List<HolidayCounty> counties = holidayCountyReader.getAllCounties(List.of(newHoliday.getId()));
+            assertThat(counties).extracting(HolidayCounty::getCountyCode)
+                    .containsExactly("KR-11");
         }
     }
 }
