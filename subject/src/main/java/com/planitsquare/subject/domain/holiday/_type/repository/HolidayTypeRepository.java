@@ -19,4 +19,6 @@ public interface HolidayTypeRepository extends JpaRepository<HolidayType, Long> 
                 AND ht.holiday.date BETWEEN :start AND :end
             """)
     void deleteByCountryAndDateBetween(Country country, LocalDate start, LocalDate end);
+
+    List<HolidayType> findByHoliday_CountryAndHoliday_DateBetween(Country country, LocalDate start, LocalDate end);
 }
