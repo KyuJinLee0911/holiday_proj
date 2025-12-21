@@ -35,8 +35,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -205,6 +204,22 @@ public class HolidayControllerE2ETest {
             List<HolidayCounty> counties = holidayCountyReader.getAllCounties(List.of(newHoliday.getId()));
             assertThat(counties).extracting(HolidayCounty::getCountyCode)
                     .containsExactly("KR-11");
+        }
+    }
+
+    @Nested
+    @DisplayName("삭제 api DELETE(/api/holidays)")
+    class DeleteApi {
+        @Test
+        void 데이터_삭제() throws Exception {
+            UpdateHolidayRequest request = new UpdateHolidayRequest(2025, "KR");
+            mockMvc.perform(delete("/api/holidays")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk());
+            assertThat(holidayReader.getByCountryAndYear(country, 2025)).isEmpty();
+            assertThat(holidayTypeReader.getByCountryAndYear(country, 2025)).isEmpty();
+            assertThat(holidayCountyReader.getByCountryAndYear(country, 2025)).isEmpty();
         }
     }
 }

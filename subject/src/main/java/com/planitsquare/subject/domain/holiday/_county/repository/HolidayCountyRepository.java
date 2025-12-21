@@ -19,4 +19,6 @@ public interface HolidayCountyRepository extends JpaRepository<HolidayCounty, Lo
                 AND hc.holiday.date BETWEEN :start AND :end
             """)
     void deleteByCountryAndDateBetween(Country country, LocalDate start, LocalDate end);
+
+    List<HolidayCounty> findByHoliday_CountryAndHoliday_DateBetween(Country holidayCountry, LocalDate holidayDateAfter, LocalDate holidayDateAfter1);
 }
